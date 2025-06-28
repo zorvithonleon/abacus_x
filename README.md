@@ -71,7 +71,7 @@ Contribute if you want, or just grab the code and own some systems.
 
 ## 📫 Teams i work with
 
-* **Email:** [CALADRIUS AND TEAMBD CYBER NINJA)
+* **CALADRIUS AND TEAMBD CYBER NINJA** 
 ---
 
 # Abacus X — *Your payloads just went full FCKING mode.* 🥷⚔️👹
